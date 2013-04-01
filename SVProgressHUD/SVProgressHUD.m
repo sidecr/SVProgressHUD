@@ -19,6 +19,7 @@ CGFloat SVProgressHUDRingThickness = 6;
 
 @property (nonatomic, readwrite) SVProgressHUDMaskType maskType;
 @property (nonatomic, strong, readonly) NSTimer *fadeOutTimer;
+@property (nonatomic, strong) NSTimer *repeatAnimTimer;
 
 @property (nonatomic, strong, readonly) UIButton *overlayView;
 @property (nonatomic, strong, readonly) UIView *hudView;
@@ -42,6 +43,8 @@ CGFloat SVProgressHUDRingThickness = 6;
          duration:(NSTimeInterval)duration;
 
 - (void)dismiss;
+- (void)dismissWithStatus:(NSString*)string error:(BOOL)error;
+- (void)dismissWithStatus:(NSString*)string error:(BOOL)error afterDelay:(NSTimeInterval)seconds;
 
 - (void)setStatus:(NSString*)string;
 - (void)registerNotifications;
@@ -118,8 +121,18 @@ CGFloat SVProgressHUDRingThickness = 6;
     [SVProgressHUD showImage:[UIImage imageNamed:@"SVProgressHUD.bundle/success.png"] status:string];
 }
 
++ (void)showSuccessWithStatus:(NSString *)string duration:(NSTimeInterval)duration {
+    [SVProgressHUD show];
+    [SVProgressHUD dismissWithSuccess:string afterDelay:duration];
+}
+
 + (void)showErrorWithStatus:(NSString *)string {
     [SVProgressHUD showImage:[UIImage imageNamed:@"SVProgressHUD.bundle/error.png"] status:string];
+}
+
++ (void)showErrorWithStatus:(NSString *)string duration:(NSTimeInterval)duration {
+    [SVProgressHUD show];
+    [SVProgressHUD dismissWithError:string afterDelay:duration];
 }
 
 + (void)showImage:(UIImage *)image status:(NSString *)string {
@@ -140,6 +153,21 @@ CGFloat SVProgressHUDRingThickness = 6;
 	[[SVProgressHUD sharedView] dismiss];
 }
 
++ (void)dismissWithSuccess:(NSString*)successString {
+	[[SVProgressHUD sharedView] dismissWithStatus:successString error:NO];
+}
+
++ (void)dismissWithSuccess:(NSString *)successString afterDelay:(NSTimeInterval)seconds {
+    [[SVProgressHUD sharedView] dismissWithStatus:successString error:NO afterDelay:seconds];
+}
+
++ (void)dismissWithError:(NSString*)errorString {
+	[[SVProgressHUD sharedView] dismissWithStatus:errorString error:YES];
+}
+
++ (void)dismissWithError:(NSString *)errorString afterDelay:(NSTimeInterval)seconds {
+    [[SVProgressHUD sharedView] dismissWithStatus:errorString error:YES afterDelay:seconds];
+}
 
 #pragma mark - Instance Methods
 
@@ -514,6 +542,31 @@ CGFloat SVProgressHUDRingThickness = 6;
                              //NSLog(@"keyWindow = %@", [UIApplication sharedApplication].keyWindow);
                          }
                      }];
+}
+
+- (void)dismissWithStatus:(NSString*)string error:(BOOL)error {
+	[self dismissWithStatus:string error:error afterDelay:0.9];
+}
+
+
+- (void)dismissWithStatus:(NSString *)string error:(BOOL)error afterDelay:(NSTimeInterval)seconds {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if(self.alpha != 1)
+            return;
+        
+        if(error)
+            self.imageView.image = [UIImage imageNamed:@"SVProgressHUD.bundle/error.png"];
+        else
+            self.imageView.image = [UIImage imageNamed:@"SVProgressHUD.bundle/success.png"];
+        
+        self.imageView.hidden = NO;
+        [self setStatus:string];
+        //[self.repeatAnimTimer invalidate];
+        //self.repeatAnimTimer = nil;
+        //[self.spinnerView stopAnimating];
+        [self.spinnerView removeFromSuperview];
+        self.fadeOutTimer = [NSTimer scheduledTimerWithTimeInterval:seconds target:self selector:@selector(dismiss) userInfo:nil repeats:NO];
+    });
 }
 
 
